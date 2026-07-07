@@ -169,9 +169,31 @@ def main():
     save_fig(fig, "fig03_embodied_vs_operational.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 4: PUE Timeseries
+    # FIGURE 4: US Water Demand
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 4: PUE Timeseries...")
+    print("Figure 4: Water Demand...")
+    fig, ax = plt.subplots(figsize=(6.5, 3.5))
+
+    water_cats = ["2024\nCurrent", "2030\nLow Estimate", "NYC Daily\nSupply", "2030\nHigh Estimate"]
+    water_mgd = [300, 697, 1000, 1451]
+    water_colors = [BLUE, ORANGE, GRAY, RED]
+
+    bars = ax.bar(water_cats, water_mgd, color=water_colors, width=0.5, edgecolor="white", lw=1.5)
+    for bar, v in zip(bars, water_mgd):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 25,
+                f"{v:,}\nMGD", ha="center", fontsize=9, fontweight="bold")
+
+    ax.set_ylabel("Water Demand (Million Gallons/Day)")
+    ax.set_title("Projected U.S. Data Center Water Demand vs. NYC Daily Supply",
+                 fontweight="bold", fontsize=10)
+    ax.set_ylim(0, 1800)
+    fig.tight_layout()
+    save_fig(fig, "fig04_water_demand.png")
+
+    # ═══════════════════════════════════════════════════════════════════
+    # FIGURE 5: PUE Timeseries
+    # ═══════════════════════════════════════════════════════════════════
+    print("Figure 5: PUE Timeseries...")
     fig, ax = plt.subplots(figsize=(6.5, 3))
     daily = df["pue"].resample("D").mean().dropna()
     ax.plot(daily.index, daily.values, lw=0.5, color=BLUE, alpha=0.5, label="Daily average")
@@ -185,12 +207,75 @@ def main():
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     ax.xaxis.set_major_locator(mdates.YearLocator())
     fig.tight_layout()
-    save_fig(fig, "fig04_pue_timeseries.png")
+    save_fig(fig, "fig05_pue_timeseries.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 5: Temperature vs. Cooling Scatter
+    # FIGURE 6: Pearson Correlation Analysis
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 5: Temperature vs. Cooling...")
+    print("Figure 6: Pearson Correlation Analysis...")
+    from scipy import stats as spstats
+
+    cols = ["outdoor_air_temp", "outdoor_air_humidity", "it_power_kw",
+            "cooling_kw", "hvac_kw", "pump_kw", "pue"]
+    labels = ["Temperature", "Humidity", "IT Power", "Cooling", "HVAC", "Pump", "PUE"]
+    sub = df[cols].dropna()
+    n_vars = len(cols)
+
+    corr_matrix = np.zeros((n_vars, n_vars))
+    pval_matrix = np.zeros((n_vars, n_vars))
+    for i in range(n_vars):
+        for j in range(n_vars):
+            r, p = spstats.pearsonr(sub[cols[i]], sub[cols[j]])
+            corr_matrix[i, j] = r
+            pval_matrix[i, j] = p
+
+    fig_corr, (ax_hm, ax_bar) = plt.subplots(1, 2, figsize=(11, 5),
+                                               gridspec_kw={"width_ratios": [1.3, 1]})
+
+    # (a) Correlation heatmap
+    im = ax_hm.imshow(corr_matrix, cmap="RdBu_r", vmin=-1, vmax=1, aspect="equal")
+    for i in range(n_vars):
+        for j in range(n_vars):
+            r = corr_matrix[i, j]
+            p = pval_matrix[i, j]
+            sig = "***" if p < 0.001 else ("**" if p < 0.01 else ("*" if p < 0.05 else ""))
+            color = "white" if abs(r) > 0.5 else "black"
+            ax_hm.text(j, i, f"{r:.3f}{sig}", ha="center", va="center", fontsize=7, color=color)
+    ax_hm.set_xticks(range(n_vars))
+    ax_hm.set_yticks(range(n_vars))
+    ax_hm.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
+    ax_hm.set_yticklabels(labels, fontsize=8)
+    ax_hm.set_title("(a) Pearson Correlation Matrix", fontweight="bold", fontsize=10)
+    plt.colorbar(im, ax=ax_hm, shrink=0.8, label="Pearson r")
+
+    # (b) Temperature correlations bar chart
+    temp_targets = ["cooling_kw", "pump_kw", "pue", "hvac_kw"]
+    temp_labels = ["Cooling", "Pump", "PUE", "HVAC"]
+    temp_r = []
+    for t in temp_targets:
+        r, _ = spstats.pearsonr(sub["outdoor_air_temp"], sub[t])
+        temp_r.append(r)
+    bar_colors = [RED if r > 0.15 else BLUE if r > 0.1 else LT_BLUE for r in temp_r]
+    bars = ax_bar.barh(temp_labels, temp_r, color=bar_colors,
+                       edgecolor="white", linewidth=1.5, height=0.5)
+    for bar, r in zip(bars, temp_r):
+        ax_bar.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height() / 2,
+                    f"r = {r:.4f}***", va="center", fontsize=8, fontweight="bold")
+    ax_bar.set_xlabel("Pearson Correlation Coefficient (r)")
+    ax_bar.set_title("(b) Temperature vs. Energy Subsystems", fontweight="bold", fontsize=10)
+    ax_bar.set_xlim(0, 0.25)
+    ax_bar.axvline(x=0, color="gray", linewidth=0.5)
+
+    fig_corr.suptitle(f"Pearson Correlation Analysis (n = {len(sub):,}, all p < 0.001)",
+                      fontweight="bold", fontsize=11, y=1.02)
+    fig_corr.tight_layout()
+    save_fig(fig_corr, "fig06_correlation_analysis.png")
+    
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # FIGURE 7: Temperature vs. Cooling Scatter
+    # ═══════════════════════════════════════════════════════════════════
+    print("Figure 7: Temperature vs. Cooling...")
     fig, ax = plt.subplots(figsize=(6.5, 3.5))
     feat = df[["outdoor_air_temp", "outdoor_air_humidity", "it_power_kw", "cooling_kw"]].dropna()
     X_all = feat[["outdoor_air_temp", "outdoor_air_humidity", "it_power_kw"]]
@@ -223,12 +308,12 @@ def main():
                  fontweight="bold", fontsize=10)
     ax.legend(fontsize=8, loc="upper left")
     fig.tight_layout()
-    save_fig(fig, "fig05_temp_vs_cooling.png")
+    save_fig(fig, "fig07_temp_vs_cooling.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 6: Seasonal Boxplots
+    # FIGURE 8: Seasonal Boxplots
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 6: Seasonal Patterns...")
+    print("Figure 8: Seasonal Patterns...")
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.5, 3))
     df["month"] = df.index.month
 
@@ -266,12 +351,12 @@ def main():
     fig.suptitle("Seasonal Variation in Cooling Energy and PUE",
                  fontweight="bold", fontsize=11, y=1.03)
     fig.tight_layout()
-    save_fig(fig, "fig06_seasonal_patterns.png")
+    save_fig(fig, "fig08_seasonal_patterns.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 7: Model Performance + Feature Importance
+    # FIGURE 9: Model Performance + Feature Importance
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 7: Model Performance...")
+    print("Figure 9: Model Performance...")
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.5, 3.5))
 
     rf = RandomForestRegressor(
@@ -311,12 +396,12 @@ def main():
     fig.suptitle("ML Model Performance: Predicting Data Center Cooling Energy",
                  fontweight="bold", fontsize=11, y=1.05)
     fig.tight_layout()
-    save_fig(fig, "fig07_model_performance.png")
+    save_fig(fig, "fig09_model_performance.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 8: Actual vs. Predicted
+    # FIGURE 10: Actual vs. Predicted
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 8: Actual vs. Predicted...")
+    print("Figure 10: Actual vs. Predicted...")
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.scatter(y_test, y_pred_rf, alpha=0.15, s=6, color=GREEN, edgecolors="none")
     mn = min(y_test.min(), y_pred_rf.min())
@@ -332,12 +417,12 @@ def main():
     ax.legend(fontsize=8)
     ax.set_aspect("equal")
     fig.tight_layout()
-    save_fig(fig, "fig08_actual_vs_predicted.png")
+    save_fig(fig, "fig10_actual_vs_predicted.png")
 
     # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 9: Carbon Footprint Projections
+    # FIGURE 11: Carbon Footprint Projections
     # ═══════════════════════════════════════════════════════════════════
-    print("Figure 9: Carbon Projections...")
+    print("Figure 11: Carbon Projections...")
     proj = results.get("projections", {})
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.5, 3.5))
 
@@ -366,32 +451,10 @@ def main():
             a.set_xlabel("Year")
             a.grid(True, alpha=0.3)
 
-    fig.suptitle("Global Data Center Carbon Footprint Projections (2024\u20132030)",
+    fig.suptitle("Global Data Center Electricity Demand and Carbon Footprint Projections (2024\u20132030)",
                  fontweight="bold", fontsize=11, y=1.05)
     fig.tight_layout()
-    save_fig(fig, "fig09_carbon_projections.png")
-
-    # ═══════════════════════════════════════════════════════════════════
-    # FIGURE 10: US Water Demand
-    # ═══════════════════════════════════════════════════════════════════
-    print("Figure 10: Water Demand...")
-    fig, ax = plt.subplots(figsize=(6.5, 3.5))
-
-    water_cats = ["2024\nCurrent", "2030\nLow Estimate", "NYC Daily\nSupply", "2030\nHigh Estimate"]
-    water_mgd = [300, 697, 1000, 1451]
-    water_colors = [BLUE, ORANGE, GRAY, RED]
-
-    bars = ax.bar(water_cats, water_mgd, color=water_colors, width=0.5, edgecolor="white", lw=1.5)
-    for bar, v in zip(bars, water_mgd):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 25,
-                f"{v:,}\nMGD", ha="center", fontsize=9, fontweight="bold")
-
-    ax.set_ylabel("Water Demand (Million Gallons/Day)")
-    ax.set_title("Projected U.S. Data Center Water Demand vs. NYC Daily Supply",
-                 fontweight="bold", fontsize=10)
-    ax.set_ylim(0, 1800)
-    fig.tight_layout()
-    save_fig(fig, "fig10_water_demand.png")
+    save_fig(fig, "fig11_carbon_projections.png")
 
     # ── Summary ──────────────────────────────────────────────────────────
     print("\n" + "=" * 60)
@@ -405,3 +468,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
