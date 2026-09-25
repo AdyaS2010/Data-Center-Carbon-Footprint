@@ -1,107 +1,117 @@
 """
-03_projections.py - Carbon footprint projections through 2030.
+03_projections.py - Global data center electricity and CO2 projections, 2024-2030.
 
-Combines:
-  - NREL facility historical energy and carbon trends (2016-2025)
-  - IEA/EPRI published growth rates for global data center electricity
-  - Three scenarios: business-as-usual, accelerated AI, green transition
+One consistent baseline is used everywhere:
+  2024 electricity  = BASE_TWH (415 TWh, IEA Energy and AI 2025)
+  2024 grid factor  = BASE_EMISSION_FACTOR (0.445 kg CO2/kWh)
+  2024 emissions    = 415 TWh x 0.445 kg/kWh = ~185 Mt CO2
 
-Adds projection data to output/results.json.
+For each scenario and year t:
+  TWh(t) = 415 * (1 + growth) ** (t - 2024)
+  EF(t)  = 0.445 * (1 - ef_decline) ** (t - 2024)       [kg CO2/kWh]
+  CO2(t) = TWh(t) * EF(t)                              [Mt CO2]
+(1 TWh = 1e9 kWh and 1 Mt = 1e9 kg, so TWh x kg/kWh = Mt.)
+
+Outputs a year-by-year table (output/tables/projections_by_year.csv),
+a sensitivity table, and facility-level annual energy/CO2.
 """
 
-import pandas as pd
-import numpy as np
+import itertools
 import json
 import os
 import sys
 
+import pandas as pd
+
 sys.path.insert(0, os.path.dirname(__file__))
-from config import MERGED_CSV, RESULTS_FILE, US_GRID_EMISSION_FACTOR, GLOBAL_GRID_EMISSION_FACTOR
+from config import (
+    MERGED_CSV, RESULTS_FILE, TABLE_DIR, BASE_YEAR, END_YEAR, BASE_TWH, BASE_EMISSION_FACTOR,
+    IEA_BASE_CASE_2030_TWH, SCENARIOS, SENS_BASE_EF, SENS_GROWTH_DELTA,
+    US_GRID_EMISSION_FACTOR, ensure_dirs,
+)
+
+
+def project(growth, ef_decline, base_twh=BASE_TWH, base_ef=BASE_EMISSION_FACTOR):
+    rows = []
+    for t in range(BASE_YEAR, END_YEAR + 1):
+        k = t - BASE_YEAR
+        twh = base_twh * (1 + growth) ** k
+        ef = base_ef * (1 - ef_decline) ** k
+        rows.append({"year": t, "twh": twh, "ef_kg_per_kwh": ef, "co2_mt": twh * ef})
+    return pd.DataFrame(rows)
 
 
 def main():
     print("=" * 60)
     print("  STEP 3: Carbon Footprint Projections")
     print("=" * 60)
+    ensure_dirs()
 
-    df = pd.read_csv(MERGED_CSV, index_col=0, parse_dates=True)
+    base_co2 = BASE_TWH * BASE_EMISSION_FACTOR
+    print(f"2024 baseline: {BASE_TWH} TWh x {BASE_EMISSION_FACTOR} kg/kWh = {base_co2:.1f} Mt CO2")
+    iea_cagr = (IEA_BASE_CASE_2030_TWH / BASE_TWH) ** (1 / (END_YEAR - BASE_YEAR)) - 1
+    print(f"Growth rate implied by the IEA base case ({IEA_BASE_CASE_2030_TWH} TWh in 2030): {iea_cagr:.1%}/yr")
 
-    # ── Facility-level annual energy and carbon ──────────────────────────
-    df["total_power_kw"] = df["it_power_kw"] + df["cooling_kw"] + df["hvac_kw"] + df["pump_kw"]
-    df["year"] = df.index.year
-
-    yearly = df.groupby("year").agg(
-        mean_total_kw=("total_power_kw", "mean"),
-        mean_it_kw=("it_power_kw", "mean"),
-        mean_cooling_kw=("cooling_kw", "mean"),
-        mean_pue=("pue", "mean"),
-        hours=("total_power_kw", "count"),
-    )
-    # Keep only years with at least 6 months of data
-    yearly = yearly[yearly["hours"] >= 4000]
-    yearly["annual_energy_mwh"] = yearly["mean_total_kw"] * yearly["hours"] / 1000
-    # CO2 tonnes = MWh * (kg CO2/kWh) * (1000 kWh/MWh) / (1000 kg/tonne) = MWh * ef
-    yearly["annual_co2_tonnes"] = yearly["annual_energy_mwh"] * US_GRID_EMISSION_FACTOR
-
-    print("\nFacility Historical Data:")
-    print(yearly[["mean_total_kw", "annual_energy_mwh", "annual_co2_tonnes", "mean_pue"]].round(1).to_string())
-
-    # ── Global projections (three scenarios) ─────────────────────────────
-    # Base: IEA reports global DC electricity at ~415 TWh in 2024
-    projection_years = list(range(2024, 2031))
-    base_twh = 415
-
-    # Growth rates per year
-    growth = {
-        "business_as_usual": 0.12,    # IEA baseline
-        "accelerated_ai":    0.15,    # High AI demand scenario
-        "green_transition":  0.08,    # Strong efficiency + renewables
-    }
-
-    # Grid emission factors (kg CO2/kWh) declining as renewables grow
-    ef = {
-        "business_as_usual": [0.49, 0.47, 0.45, 0.43, 0.41, 0.39, 0.37],
-        "accelerated_ai":    [0.49, 0.48, 0.47, 0.46, 0.45, 0.44, 0.43],
-        "green_transition":  [0.49, 0.44, 0.39, 0.34, 0.30, 0.26, 0.22],
-    }
-
-    projections = {}
-    for scenario in growth:
-        twh_list = []
-        co2_list = []
-        current = base_twh
-        for i, year in enumerate(projection_years):
-            if i > 0:
-                current *= (1 + growth[scenario])
-            twh_list.append(round(current, 1))
-            # 1 TWh = 10^9 kWh; Mt = 10^9 kg; so Mt CO2 = TWh * ef(kg/kWh)
-            co2_mt = current * ef[scenario][i]
-            co2_list.append(round(co2_mt, 1))
-
-        projections[scenario] = {
-            "years": projection_years,
-            "twh": twh_list,
-            "co2_mt": co2_list,
+    tables, projections = [], {}
+    for key, s in SCENARIOS.items():
+        p = project(s["growth"], s["ef_decline"])
+        p.insert(0, "scenario", key)
+        tables.append(p)
+        last = p.iloc[-1]
+        projections[key] = {
+            "label": s["label"],
+            "growth_rate": s["growth"],
+            "ef_annual_decline": s["ef_decline"],
+            "years": p["year"].tolist(),
+            "twh": p["twh"].round(1).tolist(),
+            "ef_kg_per_kwh": p["ef_kg_per_kwh"].round(4).tolist(),
+            "co2_mt": p["co2_mt"].round(1).tolist(),
+            "ef_2030_reduction_vs_2024_pct": round(100 * (1 - last["ef_kg_per_kwh"] / BASE_EMISSION_FACTOR), 1),
+            "co2_2030_change_vs_2024_pct": round(100 * (last["co2_mt"] / base_co2 - 1), 1),
         }
-        print(f"\n  {scenario}:")
-        for y, t, c in zip(projection_years, twh_list, co2_list):
-            print(f"    {y}: {t:>7.0f} TWh  ->  {c:>6.1f} Mt CO2")
+        print(f"\n  {s['label']} (growth {s['growth']:.0%}/yr, EF decline {s['ef_decline']:.0%}/yr)")
+        for _, r in p.iterrows():
+            print(f"    {int(r.year)}: {r.twh:7.1f} TWh  x {r.ef_kg_per_kwh:.4f} kg/kWh = {r.co2_mt:6.1f} Mt CO2")
 
-    # ── Save to results.json ─────────────────────────────────────────────
+    by_year = pd.concat(tables)
+    by_year.round(4).to_csv(os.path.join(TABLE_DIR, "projections_by_year.csv"), index=False)
+
+    # Sensitivity of 2030 emissions to the baseline EF and growth rate
+    sens = []
+    for key, s in SCENARIOS.items():
+        for ef0, dg in itertools.product(SENS_BASE_EF, SENS_GROWTH_DELTA):
+            p = project(s["growth"] + dg, s["ef_decline"], base_ef=ef0)
+            sens.append({"scenario": key, "base_ef": ef0, "growth": round(s["growth"] + dg, 3),
+                         "twh_2030": round(p.iloc[-1]["twh"], 1), "co2_2030_mt": round(p.iloc[-1]["co2_mt"], 1)})
+    sens = pd.DataFrame(sens)
+    sens.to_csv(os.path.join(TABLE_DIR, "projection_sensitivity.csv"), index=False)
+    sens_range = sens.groupby("scenario")["co2_2030_mt"].agg(["min", "max"]).round(1)
+    print("\n2030 CO2 range across sensitivity cases (Mt):")
+    print(sens_range.to_string())
+
+    # Facility-level annual energy and CO2 (U.S. average grid factor)
+    df = pd.read_csv(MERGED_CSV, index_col=0, parse_dates=True)
+    yearly = df.groupby(df.index.year).agg(mean_total_kw=("total_power_kw", "mean"),
+                                           mean_it_kw=("it_power_kw", "mean"),
+                                           hours=("total_power_kw", "count"))
+    yearly["pue_energy_weighted"] = yearly["mean_total_kw"] / yearly["mean_it_kw"]
+    yearly = yearly[yearly["hours"] >= 4000]
+    # Scale to a full year so years with missing hours are comparable
+    yearly["annual_energy_mwh"] = yearly["mean_total_kw"] * 8760 / 1000
+    yearly["annual_co2_tonnes"] = yearly["annual_energy_mwh"] * US_GRID_EMISSION_FACTOR
+    yearly.round(3).to_csv(os.path.join(TABLE_DIR, "facility_yearly.csv"))
+
     with open(RESULTS_FILE) as f:
         results = json.load(f)
-
     results["projections"] = projections
-    results["facility_yearly"] = {
-        str(int(year)): {
-            "mean_total_kw": round(float(row["mean_total_kw"]), 1),
-            "annual_energy_mwh": round(float(row["annual_energy_mwh"]), 1),
-            "annual_co2_tonnes": round(float(row["annual_co2_tonnes"]), 1),
-            "mean_pue": round(float(row["mean_pue"]), 3),
-        }
-        for year, row in yearly.iterrows()
+    results["projection_baseline"] = {
+        "base_year": BASE_YEAR, "base_twh": BASE_TWH, "base_ef_kg_per_kwh": BASE_EMISSION_FACTOR,
+        "base_co2_mt": round(base_co2, 1),
+        "iea_base_case_2030_twh": IEA_BASE_CASE_2030_TWH,
+        "iea_base_case_implied_growth": round(iea_cagr, 4),
     }
-
+    results["projection_sensitivity_2030_range"] = sens_range.to_dict(orient="index")
+    results["facility_yearly"] = yearly.round(3).to_dict(orient="index")
     with open(RESULTS_FILE, "w") as f:
         json.dump(results, f, indent=2, default=str)
     print(f"\nProjections added to: {RESULTS_FILE}")
