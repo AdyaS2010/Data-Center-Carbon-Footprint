@@ -81,7 +81,7 @@ def fig02_ai_energy():
     for i, t in enumerate(labels):
         ax1.text(i, high[i] + 0.12, t, ha="center", fontsize=8, fontweight="bold")
     ax1.set_ylabel("Energy per Request (Wh)")
-    ax1.set_title("(a) Energy per Request", fontweight="bold", fontsize=10)
+    ax1.set_title("A) Energy per Request", fontweight="bold", fontsize=10)
     ax1.set_ylim(0, 3.8)
 
     racks = ["Traditional\nrack", "GPU training\nrack"]
@@ -93,7 +93,7 @@ def fig02_ai_energy():
     for i in range(2):
         ax2.text(i, r_high[i] + 3, f"{r_low[i]}\u2013{r_high[i]} kW", ha="center", fontsize=8, fontweight="bold")
     ax2.set_ylabel("Power per Rack (kW)")
-    ax2.set_title("(b) Rack Power Density", fontweight="bold", fontsize=10)
+    ax2.set_title("B) Rack Power Density", fontweight="bold", fontsize=10)
     ax2.set_ylim(0, 120)
     fig.suptitle("Published Estimates of AI Energy Intensity", fontweight="bold", fontsize=11, y=1.03)
     fig.tight_layout()
@@ -121,7 +121,7 @@ def fig03_embodied_vs_operational():
     ax1.set_ylabel("kg CO\u2082e over lifetime")
     ax1.set_ylim(-2300, 12500)
     ax1.axhline(0, color="black", lw=0.5)
-    ax1.set_title(f"(a) At U.S. average grid\n({US_GRID_EMISSION_FACTOR} kg CO\u2082/kWh)",
+    ax1.set_title(f"A) At U.S. average grid\n({US_GRID_EMISSION_FACTOR} kg CO\u2082/kWh)",
                   fontweight="bold", fontsize=9)
     ax1.legend(fontsize=7, loc="upper left")
 
@@ -145,7 +145,7 @@ def fig03_embodied_vs_operational():
     ax2.set_ylabel("Embodied share of lifetime emissions (%)")
     ax2.set_ylim(0, 100)
     ax2.set_xlim(0, 800)
-    ax2.set_title("(b) Embodied share vs. grid intensity", fontweight="bold", fontsize=9)
+    ax2.set_title("B) Embodied share vs. grid intensity", fontweight="bold", fontsize=9)
     ax2.legend(fontsize=6.5, loc="upper right")
     fig.tight_layout()
     save_fig(fig, "fig03_embodied_vs_operational.png")
@@ -175,7 +175,7 @@ def fig05_pue_and_subsystems(df):
     ax1.plot(daily.index, daily.rolling(30, center=True, min_periods=10).mean(), lw=2, color=RED,
              label="30-day rolling mean")
     ax1.set_ylabel("PUE")
-    ax1.set_title("(a) Hourly-derived PUE, daily averages", fontweight="bold", fontsize=10)
+    ax1.set_title("A) Hourly-derived PUE, daily averages", fontweight="bold", fontsize=10)
     ax1.legend(fontsize=7, loc="upper left")
 
     for col, color, label in [("hvac_kw", RED, "HVAC"), ("pump_kw", TEAL, "Pumps"),
@@ -189,7 +189,7 @@ def fig05_pue_and_subsystems(df):
     h1, l1 = ax2.get_legend_handles_labels()
     h2, l2 = ax3.get_legend_handles_labels()
     ax2.legend(h1 + h2, l1 + l2, fontsize=7, loc="upper left", ncol=2)
-    ax2.set_title("(b) Monthly mean power by subsystem", fontweight="bold", fontsize=10)
+    ax2.set_title("B) Monthly mean power by subsystem", fontweight="bold", fontsize=10)
     for a in (ax1, ax2):
         a.axvline(pd.Timestamp("2024-04-01"), color=PURPLE, ls=":", lw=1.2)
     ax2.text(pd.Timestamp("2024-03-01"), ax2.get_ylim()[1] * 0.55, "Apr 2024", fontsize=7, color=PURPLE,
@@ -216,7 +216,7 @@ def fig06_correlations(df, results):
     ax_hm.set_yticks(range(len(cols)))
     ax_hm.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
     ax_hm.set_yticklabels(labels, fontsize=8)
-    ax_hm.set_title("(a) Pearson correlation matrix", fontweight="bold", fontsize=10)
+    ax_hm.set_title("A) Pearson correlation matrix", fontweight="bold", fontsize=10)
     plt.colorbar(im, ax=ax_hm, shrink=0.8, label="Pearson r")
 
     c = results["correlations"]
@@ -236,7 +236,7 @@ def fig06_correlations(df, results):
     xmin = min(0, lo.min()) - 0.05
     ax_bar.set_xlim(xmin, max(0.45, hi.max() + 0.25))
     ax_bar.set_xlabel("Pearson r with outdoor temperature (95% block-bootstrap CI)")
-    ax_bar.set_title("(b) Temperature vs. energy subsystems", fontweight="bold", fontsize=10)
+    ax_bar.set_title("B) Temperature vs. energy subsystems", fontweight="bold", fontsize=10)
     fig.suptitle(f"Pearson Correlation Analysis (n = {len(df):,} hours)", fontweight="bold", fontsize=11, y=1.02)
     fig.tight_layout()
     save_fig(fig, "fig06_correlation_analysis.png")
@@ -268,8 +268,8 @@ def fig08_monthly(df):
     colors = ["#4575B4", "#4575B4", "#74ADD1", "#ABD9E9", "#ABD9E9", "#F46D43",
               "#D73027", "#D73027", "#F46D43", "#ABD9E9", "#ABD9E9", "#4575B4"]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.5, 3))
-    for ax, col, ylabel, title in [(ax1, "cooling_kw", "Cooling Power (kW)", "(a) Monthly Cooling Power"),
-                                   (ax2, "pue", "PUE", "(b) Monthly PUE")]:
+    for ax, col, ylabel, title in [(ax1, "cooling_kw", "Cooling Power (kW)", "A) Monthly Cooling Power"),
+                                   (ax2, "pue", "PUE", "B) Monthly PUE")]:
         bp = ax.boxplot([df[df["local_month"] == m][col] for m in range(1, 13)], tick_labels=MONTHS,
                         patch_artist=True, widths=0.6, showfliers=False)
         for patch, color in zip(bp["boxes"], colors):
@@ -302,7 +302,7 @@ def fig09_model_performance(results):
     ax1.axhline(0, color="black", lw=0.5)
     ax1.set_ylabel("Test R\u00B2")
     ax1.set_ylim(min(-0.1, ax1.get_ylim()[0]), 1.0)
-    ax1.set_title("(a) Model B accuracy by validation method", fontweight="bold", fontsize=9)
+    ax1.set_title("A) Model B accuracy by validation method", fontweight="bold", fontsize=9)
     ax1.legend(fontsize=6.5, loc="upper left")
 
     imp = mb["rf_importance"]["rolling_origin_folds"]
@@ -319,7 +319,7 @@ def fig09_model_performance(results):
     ax2.set_yticklabels([FEATURE_LABELS[f] for f in feats])
     ax2.set_xlim(0, 1.05)
     ax2.set_xlabel("Share of total importance (mean \u00B1 SD across folds)")
-    ax2.set_title("(b) Random Forest feature importance\n(rolling-origin folds)", fontweight="bold", fontsize=9)
+    ax2.set_title("B) Random Forest feature importance\n(rolling-origin folds)", fontweight="bold", fontsize=9)
     ax2.legend(fontsize=6.5, loc="lower right")
     fig.suptitle("Predicting Cooling Power (Model B)", fontweight="bold", fontsize=11, y=0.99)
     fig.tight_layout()
@@ -329,8 +329,8 @@ def fig09_model_performance(results):
 def fig10_actual_vs_predicted(results):
     fig, axes = plt.subplots(1, 2, figsize=(7.5, 3.8), sharex=True, sharey=True)
     rf = results["model_b"]["random_forest"]
-    for ax, key, scheme, title in [(axes[0], "random", "random_split", "(a) Random 80/20 split"),
-                                   (axes[1], "chrono", "chronological_split", "(b) Chronological split")]:
+    for ax, key, scheme, title in [(axes[0], "random", "random_split", "A) Random 80/20 split"),
+                                   (axes[1], "chrono", "chronological_split", "B) Chronological split")]:
         p = pd.read_csv(os.path.join(TABLE_DIR, f"model_b_rf_predictions_{key}.csv"), index_col=0)
         ax.scatter(p["actual"], p["predicted"], s=4, alpha=0.15, color=GREEN, edgecolors="none")
         mx = max(p["actual"].max(), p["predicted"].max())
@@ -356,9 +356,9 @@ def fig11_projections(results):
         ax2.plot(d["years"], d["co2_mt"], color=color, ls=ls, lw=2, marker="o", ms=3.5, label=d["label"])
     ax1.plot(2030, IEA_BASE_CASE_2030_TWH, marker="*", color="black", ms=10, ls="none", label="IEA base case 2030")
     ax1.set_ylabel("Electricity (TWh)")
-    ax1.set_title("(a) Electricity demand", fontweight="bold", fontsize=10)
+    ax1.set_title("A) Electricity demand", fontweight="bold", fontsize=10)
     ax2.set_ylabel("CO\u2082 Emissions (Mt)")
-    ax2.set_title("(b) CO\u2082 emissions", fontweight="bold", fontsize=10)
+    ax2.set_title("B) CO\u2082 emissions", fontweight="bold", fontsize=10)
     for a in (ax1, ax2):
         a.set_xlabel("Year")
         a.grid(True, alpha=0.3)
