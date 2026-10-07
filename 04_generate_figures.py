@@ -51,8 +51,11 @@ def fig01_global_electricity():
     ax.bar(proj_years, proj_mid, color=LT_BLUE, width=0.7, label="Projected (IEA mid-range)", zorder=3)
     ax.fill_between(proj_years, [l - 20 for l in proj_low], [h + 20 for h in proj_high],
                     alpha=0.15, color=BLUE, label="Projection range")
-    ax.axhline(y=945, color=RED, linestyle="--", lw=1.5, alpha=0.7)
-    ax.text(2030.3, 945, "Japan's total\nelectricity (~945 TWh)", fontsize=7, color=RED, va="center")
+    # IEA (2025): ~945 TWh in 2030 is "slightly more than the entire electricity consumption of Japan today"
+    ax.axhline(y=IEA_BASE_CASE_2030_TWH, color=RED, linestyle="--", lw=1.5, alpha=0.7)
+    ax.text(2019.6, IEA_BASE_CASE_2030_TWH + 15,
+            "IEA 2030 base case \u2248 945 TWh (slightly more than Japan's current electricity consumption)",
+            fontsize=7, color=RED, va="bottom", ha="left")
     ax.set_xlabel("Year")
     ax.set_ylabel("Electricity Consumption (TWh)")
     ax.set_title("Global Data Center Electricity Consumption (2015\u20132030)", fontweight="bold", fontsize=10)
