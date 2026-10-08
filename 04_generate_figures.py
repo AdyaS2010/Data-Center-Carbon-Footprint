@@ -155,17 +155,36 @@ def fig03_embodied_vs_operational():
 
 
 def fig04_water():
-    # 2030 values: Han et al. (2026), new peak water capacity. NYC supply ~1,000 MGD.
-    fig, ax = plt.subplots(figsize=(6.5, 3.5))
-    cats = ["2024\nCurrent", "2030\nLow Estimate", "NYC Daily\nSupply", "2030\nHigh Estimate"]
-    mgd = [300, 697, 1000, 1451]
-    bars = ax.bar(cats, mgd, color=[BLUE, ORANGE, GRAY, RED], width=0.5, edgecolor="white")
-    for bar, v in zip(bars, mgd):
-        ax.text(bar.get_x() + bar.get_width() / 2, v + 25, f"{v:,}\nMGD", ha="center", fontsize=9, fontweight="bold")
-    ax.set_ylabel("Peak Water Capacity (Million Gallons/Day)")
-    ax.set_title("Projected U.S. Data Center Peak Water Capacity vs. NYC Daily Supply",
+    # Han et al. (2026), arXiv:2603.02705, Table 3, Baseline scenario, total U.S. data centers (MGD):
+    #   2024 capacity 306 (low growth) / 357 (high growth); 2030 capacity 1,003 / 1,809;
+    #   new capacity 2024->2030: 697 / 1,451. NYC average daily supply ~1,000 MGD (cited in Han et al.).
+    cases = ["Low growth", "High growth"]
+    cap_2024 = np.array([306, 357])
+    new_cap = np.array([697, 1451])
+    cap_2030 = np.array([1003, 1809])
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    x = np.arange(len(cases))
+    ax.bar(x, cap_2024, width=0.45, color=BLUE, edgecolor="white", label="2024 peak capacity")
+    ax.bar(x, new_cap, width=0.45, bottom=cap_2024, color=ORANGE, edgecolor="white",
+           label="New capacity needed, 2024\u20132030")
+    for i in range(len(cases)):
+        ax.text(x[i], cap_2024[i] / 2, f"{cap_2024[i]:,}", ha="center", va="center", fontsize=9,
+                color="white", fontweight="bold")
+        ax.text(x[i], cap_2024[i] + min(new_cap[i] / 2, 330), f"+{new_cap[i]:,}", ha="center", va="center",
+                fontsize=9, color="white", fontweight="bold")
+        ax.text(x[i], cap_2030[i] + 45, f"2030 total: {cap_2030[i]:,} MGD", ha="center", va="bottom",
+                fontsize=9, fontweight="bold")
+    ax.axhline(1000, color=RED, ls="--", lw=1.4)
+    ax.text(0.5, 1000 - 30, "New York City average\ndaily supply (~1,000 MGD)", color=RED, fontsize=8,
+            ha="center", va="top")
+    ax.set_xticks(x)
+    ax.set_xticklabels(cases)
+    ax.set_xlim(-0.6, 1.6)
+    ax.set_ylim(0, 2100)
+    ax.set_ylabel("Peak water capacity (million gallons/day)")
+    ax.set_title("U.S. Data Center Peak Water Capacity, 2024 and 2030 (Baseline Scenario)",
                  fontweight="bold", fontsize=10)
-    ax.set_ylim(0, 1800)
+    ax.legend(fontsize=8, loc="upper left")
     fig.tight_layout()
     save_fig(fig, "fig04_water_demand.png")
 
