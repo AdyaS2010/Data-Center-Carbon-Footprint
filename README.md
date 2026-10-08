@@ -20,7 +20,7 @@ Download the two Parquet files from https://data.openei.org/submissions/8616 and
 | `esif.influx.buildingData.PUE.combined.parquet` | `data/esif_pue_raw.parquet` |
 | `esif.influx.buildingData.outside.combined_2.parquet` | `data/esif_weather_raw.parquet` |
 
-The raw files (~170 MB) are not committed. The cleaned hourly file `esif_hourly_merged.csv` is committed, so `02`–`04` can run without them.
+The raw files (~170 MB) are not committed. `data/world_grid_carbon_intensity_ember.csv` is the world lifecycle carbon intensity of electricity (Ember, via Our World in Data, https://ourworldindata.org/grapher/carbon-intensity-electricity), used as the historical benchmark for the Business as Usual scenario. The cleaned hourly file `esif_hourly_merged.csv` is committed, so `02`–`04` can run without them.
 
 ## Pipeline
 
@@ -38,7 +38,7 @@ Outputs: `output/results.json`, `output/tables/*.csv`, `output/figures/*.png`.
 | Reviewer comment | Change |
 |---|---|
 | Two 2024 baselines (415 vs 460 TWh) | One baseline: 415 TWh × 0.445 kg/kWh ≈ 185 Mt. The old code used 0.49 kg/kWh even though the paper stated 0.445. |
-| Emission-factor path not given | `EF(t) = 0.445 × (1 − d)^(t−2024)` with *d* = 3%, 1% and 11%/yr. Year-by-year values are in `projections_by_year.csv`. |
+| Emission-factor path not given | `EF(t) = 0.445 × (1 − d)^(t−2024)` with *d* = 1.5% (Business as Usual, equal to the 2015–2025 decline in world grid carbon intensity from Ember data in `data/world_grid_carbon_intensity_ember.csv`), 1% (Accelerated AI) and 11%/yr (Green Transition). Year-by-year values are in `projections_by_year.csv`; scenario assumptions in `scenario_assumptions.csv`. |
 | Meaning of "55%" | The reduction in grid intensity is now calculated and reported against 2024 (`ef_2030_reduction_vs_2024_pct`). |
 | Random 80/20 split on time series | Adds a chronological 80/20 split and rolling-origin validation by year (2019–2025). The random split is kept only for comparison. |
 | Feature-importance robustness | Impurity and permutation importance, mean ± SD across rolling folds and 10 repeated random splits. |

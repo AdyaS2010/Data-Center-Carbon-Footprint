@@ -65,19 +65,26 @@ IEA_BASE_CASE_2030_TWH = 945
 
 # Each scenario = annual electricity growth rate + annual decline rate of the grid
 # emission factor. EF(t) = EF_2024 * (1 - decline) ** (t - 2024).
+# Historical benchmark for the decline rate: world lifecycle carbon intensity of electricity
+# (Ember, via Our World in Data), compound annual change between these years.
+HIST_GRID_FILE = os.path.join(DATA_DIR, "world_grid_carbon_intensity_ember.csv")
+HIST_START, HIST_END = 2015, 2025
 SCENARIOS = {
     "business_as_usual": {
         "label": "Business as Usual",
-        "growth": 0.12,          # recent historical growth (IEA: ~12%/yr since 2017)
-        "ef_decline": 0.03,      # grid decarbonizes at ~3%/yr
+        "description": "Recent trends continue",
+        "growth": 0.12,          # recent historical growth (IEA: ~12%/yr over the last five years)
+        "ef_decline": 0.015,     # historical decline of world grid intensity, 2015-2025 (~1.5%/yr)
     },
     "accelerated_ai": {
         "label": "Accelerated AI",
-        "growth": 0.15,          # close to the growth implied by the IEA base case
-        "ef_decline": 0.01,      # extra demand partly met by fossil generation
+        "description": "AI drives faster growth; part of new demand met by fossil generation",
+        "growth": 0.15,          # IEA base case (~15%/yr, 415 -> ~945 TWh)
+        "ef_decline": 0.01,      # slower than the historical decline
     },
     "green_transition": {
         "label": "Green Transition",
+        "description": "Efficiency slows growth; rapid renewable expansion",
         "growth": 0.08,          # efficiency gains slow demand growth
         "ef_decline": 0.11,      # rapid renewable build-out; EF reaches ~0.22 by 2030
     },

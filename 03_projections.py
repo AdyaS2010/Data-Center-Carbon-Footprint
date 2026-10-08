@@ -27,8 +27,17 @@ sys.path.insert(0, os.path.dirname(__file__))
 from config import (
     MERGED_CSV, RESULTS_FILE, TABLE_DIR, BASE_YEAR, END_YEAR, BASE_TWH, BASE_EMISSION_FACTOR,
     IEA_BASE_CASE_2030_TWH, SCENARIOS, SENS_BASE_EF, SENS_GROWTH_DELTA,
-    US_GRID_EMISSION_FACTOR, ensure_dirs,
+    US_GRID_EMISSION_FACTOR, HIST_GRID_FILE, HIST_START, HIST_END, ensure_dirs,
 )
+
+
+def historical_decline():
+    """Compound annual change in world grid carbon intensity between HIST_START and HIST_END."""
+    h = pd.read_csv(HIST_GRID_FILE).set_index("year").iloc[:, 0]
+    a, b = h.loc[HIST_START], h.loc[HIST_END]
+    rate = 1 - (b / a) ** (1 / (HIST_END - HIST_START))
+    return {"start_year": HIST_START, "end_year": HIST_END, "start_g_per_kwh": float(a),
+            "end_g_per_kwh": float(b), "annual_decline": round(float(rate), 4)}
 
 
 def project(growth, ef_decline, base_twh=BASE_TWH, base_ef=BASE_EMISSION_FACTOR):
@@ -51,6 +60,10 @@ def main():
     print(f"2024 baseline: {BASE_TWH} TWh x {BASE_EMISSION_FACTOR} kg/kWh = {base_co2:.1f} Mt CO2")
     iea_cagr = (IEA_BASE_CASE_2030_TWH / BASE_TWH) ** (1 / (END_YEAR - BASE_YEAR)) - 1
     print(f"Growth rate implied by the IEA base case ({IEA_BASE_CASE_2030_TWH} TWh in 2030): {iea_cagr:.1%}/yr")
+    hist = historical_decline()
+    print(f"World grid carbon intensity {HIST_START}-{HIST_END}: {hist['start_g_per_kwh']:.0f} -> "
+          f"{hist['end_g_per_kwh']:.0f} g/kWh, {hist['annual_decline']:.2%}/yr decline "
+          f"(Business as Usual uses {SCENARIOS['business_as_usual']['ef_decline']:.1%})")
 
     tables, projections = [], {}
     for key, s in SCENARIOS.items():
@@ -69,12 +82,23 @@ def main():
             "ef_2030_reduction_vs_2024_pct": round(100 * (1 - last["ef_kg_per_kwh"] / BASE_EMISSION_FACTOR), 1),
             "co2_2030_change_vs_2024_pct": round(100 * (last["co2_mt"] / base_co2 - 1), 1),
         }
-        print(f"\n  {s['label']} (growth {s['growth']:.0%}/yr, EF decline {s['ef_decline']:.0%}/yr)")
+        print(f"\n  {s['label']} (growth {s['growth']:.0%}/yr, EF decline {s['ef_decline']:.1%}/yr)")
         for _, r in p.iterrows():
             print(f"    {int(r.year)}: {r.twh:7.1f} TWh  x {r.ef_kg_per_kwh:.4f} kg/kWh = {r.co2_mt:6.1f} Mt CO2")
 
     by_year = pd.concat(tables)
     by_year.round(4).to_csv(os.path.join(TABLE_DIR, "projections_by_year.csv"), index=False)
+
+    # Scenario assumptions table (paper Table 1)
+    assumptions = pd.DataFrame([{
+        "scenario": s["label"], "assumption": s["description"],
+        "growth_pct_per_yr": round(100 * s["growth"], 1), "ef_decline_pct_per_yr": round(100 * s["ef_decline"], 1),
+        "ef_2030_kg_per_kwh": round(projections[k]["ef_kg_per_kwh"][-1], 3),
+        "twh_2030": round(projections[k]["twh"][-1]), "co2_2030_mt": round(projections[k]["co2_mt"][-1]),
+    } for k, s in SCENARIOS.items()])
+    assumptions.to_csv(os.path.join(TABLE_DIR, "scenario_assumptions.csv"), index=False)
+    print("\nScenario assumptions:")
+    print(assumptions.to_string(index=False))
 
     # Sensitivity of 2030 emissions to the baseline EF and growth rate
     sens = []
@@ -104,6 +128,7 @@ def main():
     with open(RESULTS_FILE) as f:
         results = json.load(f)
     results["projections"] = projections
+    results["historical_grid_intensity"] = hist
     results["projection_baseline"] = {
         "base_year": BASE_YEAR, "base_twh": BASE_TWH, "base_ef_kg_per_kwh": BASE_EMISSION_FACTOR,
         "base_co2_mt": round(base_co2, 1),

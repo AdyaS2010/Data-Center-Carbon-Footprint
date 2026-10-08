@@ -1,11 +1,11 @@
 scenario,year,twh,ef_kg_per_kwh,co2_mt
 business_as_usual,2024,415.0,0.445,184.675
-business_as_usual,2025,464.8,0.4316,200.6309
-business_as_usual,2026,520.576,0.4187,217.9654
-business_as_usual,2027,583.0451,0.4061,236.7976
-business_as_usual,2028,653.0105,0.394,257.257
-business_as_usual,2029,731.3718,0.3821,279.484
-business_as_usual,2030,819.1364,0.3707,303.6314
+business_as_usual,2025,464.8,0.4383,203.7335
+business_as_usual,2026,520.576,0.4318,224.7588
+business_as_usual,2027,583.0451,0.4253,247.9539
+business_as_usual,2028,653.0105,0.4189,273.5427
+business_as_usual,2029,731.3718,0.4126,301.7723
+business_as_usual,2030,819.1364,0.4064,332.9152
 accelerated_ai,2024,415.0,0.445,184.675
 accelerated_ai,2025,477.25,0.4406,210.2525
 accelerated_ai,2026,548.8375,0.4361,239.3725
