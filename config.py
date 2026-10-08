@@ -86,7 +86,9 @@ SCENARIOS = {
         "label": "Green Transition",
         "description": "Efficiency slows growth; rapid renewable expansion",
         "growth": 0.08,          # efficiency gains slow demand growth
-        "ef_decline": 0.11,      # rapid renewable build-out; EF reaches ~0.22 by 2030
+        "ef_decline": 0.11,      # IEA Net Zero by 2050 (2021), Table A.5: CO2 intensity of electricity
+                                 # generation 0.438 (2020) -> 0.138 (2030), -11%/yr. Applied from the
+                                 # 2024 baseline, so EF reaches ~0.22 (not 0.138) by 2030.
     },
 }
 # Sensitivity ranges for the projection
