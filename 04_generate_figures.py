@@ -191,7 +191,7 @@ def fig04_water():
 
 def fig05_pue_and_subsystems(df):
     monthly = pd.read_csv(os.path.join(TABLE_DIR, "monthly_subsystems.csv"), index_col=0, parse_dates=True)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6.5, 5.2), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6.5, 5.6), sharex=True)
     daily = df["pue"].resample("D").mean().dropna()
     ax1.plot(daily.index, daily.values, lw=0.5, color=BLUE, alpha=0.5, label="Daily average")
     ax1.plot(daily.index, daily.rolling(30, center=True, min_periods=10).mean(), lw=2, color=RED,
@@ -214,11 +214,13 @@ def fig05_pue_and_subsystems(df):
     ax2.set_title("B) Monthly mean power by subsystem", fontweight="bold", fontsize=10)
     for a in (ax1, ax2):
         a.axvline(pd.Timestamp("2024-04-01"), color=PURPLE, ls=":", lw=1.2)
-    ax2.text(pd.Timestamp("2024-03-01"), ax2.get_ylim()[1] * 0.55, "Apr 2024", fontsize=7, color=PURPLE,
-             ha="right")
-    ax2.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    ax2.xaxis.set_major_locator(mdates.YearLocator())
-    ax2.set_xlabel("Year")
+    ax2.text(pd.Timestamp("2024-04-25"), 62, "Apr 2024", fontsize=7, color=PURPLE, ha="left", va="center",
+             bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.9), zorder=5)
+    for a in (ax1, ax2):
+        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+        a.xaxis.set_major_locator(mdates.YearLocator())
+        a.set_xlabel("Year")
+    ax1.tick_params(axis="x", labelbottom=True)
     fig.tight_layout()
     save_fig(fig, "fig05_pue_timeseries.png")
 
