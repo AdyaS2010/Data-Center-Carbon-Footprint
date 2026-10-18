@@ -65,8 +65,8 @@ IEA_BASE_CASE_2030_TWH = 945
 
 # Each scenario = annual electricity growth rate + annual decline rate of the grid
 # emission factor. EF(t) = EF_2024 * (1 - decline) ** (t - 2024).
-# Historical benchmark for the decline rate: world lifecycle carbon intensity of electricity
-# (Ember, via Our World in Data), compound annual change between these years.
+# Historical comparison for the decline rate (not used in any scenario): world lifecycle carbon
+# intensity of electricity (Ember, via Our World in Data), compound annual change between these years.
 HIST_GRID_FILE = os.path.join(DATA_DIR, "world_grid_carbon_intensity_ember.csv")
 HIST_START, HIST_END = 2015, 2025
 SCENARIOS = {
@@ -74,7 +74,7 @@ SCENARIOS = {
         "label": "Business as Usual",
         "description": "Recent trends continue",
         "growth": 0.12,          # recent historical growth (IEA: ~12%/yr over the last five years)
-        "ef_decline": 0.015,     # historical decline of world grid intensity, 2015-2025 (~1.5%/yr)
+        "ef_decline": 0.036,     # IEA Electricity 2025 forecast decline of global grid CO2 intensity (3.6%/yr)
     },
     "accelerated_ai": {
         "label": "Accelerated AI",
@@ -96,7 +96,7 @@ SENS_BASE_EF = [0.40, 0.445, 0.49]
 SENS_GROWTH_DELTA = [-0.02, 0.0, 0.02]
 
 # US average grid emission factor (kg CO2/kWh), used for the facility and Figure 3
-US_GRID_EMISSION_FACTOR = 0.39
+US_GRID_EMISSION_FACTOR = 0.348  # EPA eGRID2023 U.S. average (348 g/kWh)
 
 # ── Figure 3 (embodied vs operational carbon) assumptions ────────────────
 # Embodied carbon values: Weppe et al. (HotCarbon '25).
