@@ -1,0 +1,4 @@
+__pycache__/
+data/*.parquet
+data/*.zip
+data/esif_hourly_merged_every10th.csv
